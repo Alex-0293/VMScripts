@@ -4,14 +4,17 @@
     [string]$Global:Computer               = ""         
     [string]$Global:UserValuePath          = ""         
     [string]$Global:PasswordValuePath      = ""         
-
+    [string]$Global:VMKeyPath              = ""         
     [string]$Global:NewVMName              = ""         
-
+    [string]$Global:SShIdentityFilePath    = ""         
+    [string]$Global:XMLPath                = ""          # Exported repo and sub folders from Keepass
 ######################### no replacement ########################
     [string]$Global:InitialExportPath      = "G:\EXPORT\REPO\"
     [string]$Global:ImportPath             = "D:\DATA\HYPER-V\IMPORTED"
     [string]$Global:RDPShortcutsFolderPath = "G:\RDP\"
     [string]$Global:IsoPath                = "\\srv1\g$\ISO\"   
+    [string]$Global:BGInfoInstallerURL     = "https://download.sysinternals.com/files/BGInfo.zip"
+    [int16] $Global:MaxVMNetworkWaitRetry    = 10
     
     $LAN = "LAN"
     $WAN = "EXT"
@@ -30,10 +33,7 @@
     }
 
     $VM_Gen1_4CPU_M2Gb_H64Gb = @{
-        Computer                    = $Computer
-        Credentials                 = $Credentials
-        vmName                      = $NewVMName
-        path                        = $ImportPath
+        
         generation                  = 1
         memorySize                  = 2 * ([math]::Pow(1024, 3))
         processorCount              = 4
@@ -44,10 +44,7 @@
         useDefaultStorage           = $false 
     }
     $VM_Gen1_4CPU_M4Gb_H64Gb = @{
-        Computer                    = $Computer
-        Credentials                 = $Credentials
-        vmName                      = $NewVMName
-        path                        = $ImportPath
+        
         generation                  = 1
         memorySize                  = 4 * ([math]::Pow(1024, 3))
         processorCount              = 4
@@ -58,10 +55,7 @@
         useDefaultStorage           = $false 
     }
     $VM_Gen1_4CPU_M8Gb_H64Gb = @{
-        Computer                    = $Computer
-        Credentials                 = $Credentials
-        vmName                      = $NewVMName
-        path                        = $ImportPath
+        
         generation                  = 1
         memorySize                  = 8 * ([math]::Pow(1024, 3))
         processorCount              = 4
@@ -72,10 +66,7 @@
         useDefaultStorage           = $false 
     }
     $VM_Gen1_4CPU_M2Gb_H128Gb = @{
-        Computer                    = $Computer
-        Credentials                 = $Credentials
-        vmName                      = $NewVMName
-        path                        = $ImportPath
+        
         generation                  = 1
         memorySize                  = 2 * ([math]::Pow(1024, 3))
         processorCount              = 4
@@ -86,10 +77,7 @@
         useDefaultStorage           = $false 
     }
     $VM_Gen1_4CPU_M4Gb_H128Gb = @{
-        Computer                    = $Computer
-        Credentials                 = $Credentials
-        vmName                      = $NewVMName
-        path                        = $ImportPath
+        
         generation                  = 1
         memorySize                  = 4 * ([math]::Pow(1024, 3))
         processorCount              = 4
@@ -100,10 +88,7 @@
         useDefaultStorage           = $false 
     }
     $VM_Gen1_4CPU_M8Gb_H128Gb = @{
-        Computer                    = $Computer
-        Credentials                 = $Credentials
-        vmName                      = $NewVMName
-        path                        = $ImportPath
+        
         generation                  = 1
         memorySize                  = 8 * ([math]::Pow(1024, 3))
         processorCount              = 4
@@ -114,10 +99,7 @@
         useDefaultStorage           = $false 
     }
     $VM_Gen2_4CPU_M2Gb_H64Gb = @{
-        Computer                    = $Computer
-        Credentials                 = $Credentials
-        vmName                      = $NewVMName
-        path                        = $ImportPath
+        
         generation                  = 2
         memorySize                  = 2 * ([math]::Pow(1024, 3))
         processorCount              = 4
@@ -128,10 +110,7 @@
         useDefaultStorage           = $false 
     }
     $VM_Gen2_4CPU_M4Gb_H64Gb = @{
-        Computer                    = $Computer
-        Credentials                 = $Credentials
-        vmName                      = $NewVMName
-        path                        = $ImportPath
+        
         generation                  = 2
         memorySize                  = 4 * ([math]::Pow(1024, 3))
         processorCount              = 4
@@ -142,10 +121,7 @@
         useDefaultStorage           = $false 
     }
     $VM_Gen2_4CPU_M8Gb_H64Gb = @{
-        Computer                    = $Computer
-        Credentials                 = $Credentials
-        vmName                      = $NewVMName
-        path                        = $ImportPath
+        
         generation                  = 2
         memorySize                  = 8 * ([math]::Pow(1024, 3))
         processorCount              = 4
@@ -156,10 +132,7 @@
         useDefaultStorage           = $false 
     }
     $VM_Gen2_4CPU_M2Gb_H128Gb = @{
-        Computer                    = $Computer
-        Credentials                 = $Credentials
-        vmName                      = $NewVMName
-        path                        = $ImportPath
+        
         generation                  = 2
         memorySize                  = 2 * ([math]::Pow(1024, 3))
         processorCount              = 4
@@ -170,10 +143,7 @@
         useDefaultStorage           = $false 
     }
     $VM_Gen2_4CPU_M4Gb_H128Gb = @{
-        Computer                    = $Computer
-        Credentials                 = $Credentials
-        vmName                      = $NewVMName
-        path                        = $ImportPath
+        
         generation                  = 2
         memorySize                  = 4 * ([math]::Pow(1024, 3))
         processorCount              = 4
@@ -184,10 +154,7 @@
         useDefaultStorage           = $false 
     }
     $VM_Gen2_4CPU_M8Gb_H128Gb = @{
-        Computer                    = $Computer
-        Credentials                 = $Credentials
-        vmName                      = $NewVMName
-        path                        = $ImportPath
+        
         generation                  = 2
         memorySize                  = 8 * ([math]::Pow(1024, 3))
         processorCount              = 4

@@ -5,3 +5,11 @@ LOGS/Errors.log
 LOGS/VMUtils.log
 SCRIPTS/ConfigWindowsHost.ps1
 SETTINGS/Settings.ps1
+LOGS/VMScripts.log
+VALUES/KEYS/VMKey.dat
+VALUES/Win2016-RU_администратор_Password.dat
+VALUES/Win2016-RU_администратор_Login.dat
+VALUES/Win10-X64-RU_user_Password.dat
+VALUES/Win10-X64-RU_user_Login.dat
+VALUES/ubuntu18-repo_user1_Password.dat
+VALUES/ubuntu18-repo_user1_Login.dat
