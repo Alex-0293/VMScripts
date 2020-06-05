@@ -605,8 +605,23 @@ exit 1
                         
                         $GuestCredentials = Get-GuestCredentials $GuestHostName
                         $GuestOSName = Get-GuestWindowsOSVersion $VMName $GuestCredentials
-
-                        $ConfigType = "Install remoting"
+                        
+                        while (-not ($Answer -in @("1","2","3","4"))) {
+                            $Answer = Read-Host "Select config type:
+                            [1] Install updates
+                            [2] Install remoting
+                            [3] Configure
+                            [4] Rename        
+                            "                    
+                            switch ($Answer) {
+                                "1" { $ConfigType = "Install updates" }
+                                "2" { $ConfigType = "Install remoting" }
+                                "3" { $ConfigType = "Configure" }
+                                "4" { $ConfigType = "Rename" }
+                                Default { Write-host "Wrong input. Select number from the list!" -ForegroundColor Red }
+                            }
+                        }
+                        
                         . ./ConfigWindowsHost.ps1 -InitGlobal $false -InitLocal $false -VM $Item  -GuestOSName $GuestOSName -GuestIP $GuestIP -GuestHostName $GuestHostName -GuestCredentials $GuestCredentials -ConfigType $ConfigType
                         
                         #$NewGuestName = Read-Host "Enter new guest name"
@@ -652,6 +667,9 @@ if ($res) {
     " -ForegroundColor Cyan
 
     $Actions = Read-Host
+    if ($Actions -eq 0){
+        Exit 0
+    }
     if ($Actions.Contains(",")) {
         $Actions = $Actions.split(",")
     }
@@ -669,6 +687,8 @@ if ($res) {
     if ($NeedVM) {
         $VMId = ($AllVMNames | Out-GridView -Title "Select VM." -PassThru ).VMId
         $Global:VM = $VMList | Where-Object { $_.id -in $VMId }
+        Write-host "Selected VM:
+        $(($Global:VM | Select-Object VMName, State,  VMId | format-table -AutoSize | out-string).trim())" -ForegroundColor DarkMagenta
     }
     Else {
         $Global:VM = $Null
