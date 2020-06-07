@@ -64,10 +64,12 @@ param (
     $AllVMInfo  = $VMList | Select-Object CreationTime, StatusDescriptions, VMName, State, Uptime, AutomaticStartDelay, Generation, Version, ProcessorCount, MemoryAssigned, MemoryDemand, ParentCheckpointName, Path, Notes
 
     switch ($Action) {
+        #[1] Show VM.
         "1" {
             Write-Host "[1] Show VM."
             $AllVMInfo | Out-GridView -OutputMode Single -Title "Select VM." | out-null
         }
+        #[2] Start VM.
         "2" {
             Write-Host "[2] Start VM."          
             if ($VM) {
@@ -77,6 +79,7 @@ param (
                 }                
             }
         }
+        #[3] Stop VM.
         "3" {
             Write-Host "[3] Stop VM."     
             if ($VM) {
@@ -90,6 +93,7 @@ param (
 exit 1
             } 
         }
+        #[4] Restart VM.
         "4" {
             Write-Host "[4] Restart VM."             
             if ($VM) {
@@ -103,6 +107,7 @@ exit 1
                 exit 1
             }
         }
+        #[5] Shutdown and start VM.
         "5" {
             Write-Host "[5] Shutdown and start VM."             
             if ($VM) {
@@ -116,6 +121,7 @@ exit 1
                 exit 1
             }
         }
+        #[6] Get VM settings.
         "6" {
             Write-Host "[6] Get VM settings."
             if ($VM) {
@@ -128,6 +134,7 @@ exit 1
                 exit 1
             } 
         }
+        #[7] Rename VM.
         "7" {
             Write-Host "[7] Rename VM." 
             if ($VM) {
@@ -142,17 +149,14 @@ exit 1
                 exit 1
             }  
         }
+        #[8] Remove VM.
         "8" {
             Write-Host "[8] Remove VM." 
             if ($VM) {
                 foreach ($Item in $VM) {
                     $VMName    = $Item.name
-                    $LastState = $VM.state
-
-                    if ($LastState -ne "Off") {
-                        Stop-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
-                    }  
-
+                    
+                    Stop-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
                     Remove-CustomVM -Computer $Computer -Credentials $Credentials -VM $Item -DeleteVMFolder  
                 }                     
             }
@@ -161,6 +165,7 @@ exit 1
                 exit 1
             }  
         }
+        #[9] Move VM storage
         "9" {
             Write-Host "[9] Move VM storage"            
             if ($VM) {
@@ -175,6 +180,7 @@ exit 1
                 exit 1
             }  
         }
+        #[10] Add boot ISO
         "10" {
             Write-Host "[10] Add boot ISO"            
             if ($VM) {
@@ -189,6 +195,7 @@ exit 1
                 exit 1
             }
         }
+        #[11] Remove boot ISO.
         "11" {
             Write-Host "[11] Remove boot ISO."            
             if ($VM) {
@@ -199,21 +206,15 @@ exit 1
                 } 
             }  
         }
+        #[12] Optimize VM HDDs.
         "12" {
             Write-Host "[12] Optimize VM HDDs."            
             if ($VM) {
                 foreach ($Item in $VM) {
                     $VMName = $Item.name
-                    $LastState = $Item.state
-
-                    if ($LastState -ne "Off") {
-                        Stop-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
-                    }
+                    
+                    Stop-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
                     Start-VMVHDOptimization  -Computer $Computer -Credentials $Credentials -VMName $VMName -Mode "Full" -OptimizeCheckpoints
-
-                    if ($LastState -eq "Running") {
-                        Start-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
-                    }
                 }  
             }
             Else {
@@ -221,6 +222,7 @@ exit 1
                 exit 1
             }
         }
+        #[13] Create new VM.
         "13" {
             Write-Host "[13] Create new VM."  
             if (-not $NewVMName) {
@@ -257,6 +259,7 @@ exit 1
                 Start-VMConsole  -Computer $Computer -Credentials $Credentials -VM $NewVM
             } 
         }
+        #[14] Import exported VM.
         "14" {
             Write-Host "[14] Import exported VM."
             $ExportPath = Convert-FSPath $Global:InitialExportPath $Computer
@@ -272,22 +275,15 @@ exit 1
                 $NewVM = Add-NewCustomVM -Computer $Computer -Credentials $Credentials -NewVMName $NewVMName -Mode "Import" -ImportPath $ImportPath -VMTemplatePath $VMTemplatePath -RDPShortcutsFolderPath $RDPShortcutsFolderPath -AddNewSnapshot -StartVM -StartRDPConsole
             }
         }
+        #[15] Export existing VM.
         "15" {
             Write-Host "[15] Export existing VM."            
             if ($VM) {
                 foreach ($Item in $VM) { 
                     $VMName = $VM.name
-                    $LastState = $VM.state
-
-                    if ($LastState -ne "Off") {
-                        Stop-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
-                    }
-
-                    Export-ExistingVM  -Computer $Computer -Credentials $Credentials -VM $Item  -ExportPath $Global:InitialExportPath -RemoveIndex
-
-                    if ($LastState -eq "Running") {
-                        Start-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
-                    }
+                        
+                    Stop-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
+                    Export-ExistingVM  -Computer $Computer -Credentials $Credentials -VM $Item  -ExportPath $Global:InitialExportPath -RemoveIndex -RemoveBootISO
                 }
             }
             Else {
@@ -295,6 +291,7 @@ exit 1
                 exit 1
             }
         }
+        #[16] Set boot order.
         "16" {
             Write-Host "[16] Set boot order."            
             if ($VM) {
@@ -331,6 +328,7 @@ exit 1
                 exit 1
             }   
         }
+        #[17] Set VM RAM size.
         "17" {
             Write-Host "[17] Set VM RAM size."            
             if ($VM) {
@@ -346,12 +344,18 @@ exit 1
                 exit 1
             }
         }
+        #[18] Add VM adapter.
         "18" {
-            Write-Host "[18] Show VM checkpoints."
+            Write-Host "[18] Add VM adapter."            
             if ($VM) {
                 foreach ($Item in $VM) {
                     $VMName = $Item.name
-                    Get-ExistingVMSnapshots -Computer $Computer -credentials $Credentials -VMName $VMName | Out-GridView -OutputMode Single -Title "Select VM Snapshot." 
+                    $AdapterName = read-host "Enter new network adapter name"
+                    $Switch = Get-ExistingVMSwitch  -Computer $Computer -Credentials $Credentials -Cached | select-object Name, SwitchType, NetAdapterInterfaceDescription | Out-GridView -OutputMode Single -Title "Select VM switch to add"
+                    if ($Switch) {
+                        $SwitchName = $Switch.Name 
+                        Add-VMNetAdapter  -Computer $Computer -Credentials $Credentials -VMName $VMName -SwitchName $SwitchName -AdapterName $AdapterName
+                    }
                 }
             }
             Else {
@@ -359,26 +363,50 @@ exit 1
                 exit 1
             }
         }
+        #[19] Remove VM adapter.
         "19" {
-            Write-Host "[19] Restore VM checkpoint." 
+            Write-Host "[19] Remove VM adapter."            
+            if ($VM) {
+                foreach ($Item in $VM) {
+                    $VMName = $Item.name           
+                    $Adapter = Get-ExistingVMNetworkAdapter -Computer $Computer -Credentials $Credentials -VMName $VMName -Cached | select-object VMName, Name, SwitchName, MacAddress, Status, IPAddresses | Out-GridView -OutputMode Single -Title "Select VM network adapter to remove"
+                    if ($Adapter) {
+                        $AdapterName = $Adapter.name
+                        Remove-VMNetAdapter  -Computer $Computer -Credentials $Credentials -VMName $VMName -AdapterName $AdapterName
+                    }
+                }
+            } 
+            Else {
+                Add-ToLog -Message "VM not chosen! Aborted." -logFilePath $ScriptLogFilePath -Display -Status "Warning"
+                exit 1
+            }
+        }
+        #[20] Show VM checkpoints.
+        "20" {
+            Write-Host "[20] Show VM checkpoints."
             if ($VM) {
                 foreach ($Item in $VM) {
                     $VMName = $Item.name
-                    $VMSnapshot = Get-ExistingVMSnapshots -Computer $Computer -credentials $Credentials -VMName $VMName | Out-GridView -OutputMode Single -Title "Select VM Snapshot to restore." 
+                    Get-ExistingVMCheckpoints -Computer $Computer -credentials $Credentials -VMName $VMName -Cached | Out-GridView -OutputMode Single -Title "Select VM Snapshot." 
+                }
+            }
+            Else {
+                Add-ToLog -Message "VM not chosen! Aborted." -logFilePath $ScriptLogFilePath -Display -Status "Warning"
+                exit 1
+            }
+        }
+        #[21] Restore VM checkpoint.
+        "21" {
+            Write-Host "[21] Restore VM checkpoint." 
+            if ($VM) {
+                foreach ($Item in $VM) {
+                    $VMName = $Item.name
+                    $VMSnapshot = Get-ExistingVMCheckpoints -Computer $Computer -credentials $Credentials -VMName $VMName -Cached | Out-GridView -OutputMode Single -Title "Select VM Snapshot to restore." 
                     if ($VMSnapshot) {                 
-                        $LastState = $VM.state
 
-                        if ($LastState -ne "Off") {
-                            Stop-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
-                        }  
-
+                        Stop-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
                         $VMSnapshotName = $VMSnapshot.Name
                         Restore-CustomVMCheckpoint -Computer $Computer -Credentials $Credentials -VMName $VMName -SnapshotName $VMSnapshotName
-
-                        if ($LastState -eq "Running") {
-                            Start-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
-                        }
-
                     }  
                 }            
             } 
@@ -387,8 +415,9 @@ exit 1
                 exit 1
             }
         }
-        "20" {
-            Write-Host "[20] Create new checkpoint for existing VM."      
+        #[22] Create new checkpoint for existing VM.
+        "22" {
+            Write-Host "[22] Create new checkpoint for existing VM."      
             if ($VM) {
                 foreach ($Item in $VM) {
                     $Answer = Read-Host "Enter checkpoint name or select from the list:
@@ -405,19 +434,10 @@ exit 1
                         "4" { $CheckpointName = "Configured" }
                         Default { [string] $CheckpointName = $Answer }
                     }
-                    $ThisVM = Get-ExistingVM  -Computer $Computer -Credentials $Credentials -VMName $VMName
+                    $ThisVM = Get-ExistingVM  -Computer $Computer -Credentials $Credentials -VMName $VMName -Cached
                     
-                    $LastState = $ThisVM.state
-
-                    if ($LastState -ne "Off") {
-                        Stop-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
-                    }   
-
+                    Stop-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
                     Add-VMCheckPoint -Computer $Computer -Credentials $Credentials -VMName $VMName -NewCheckpointName $CheckpointName
-
-                    if ($LastState -eq "Running") {
-                        Start-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
-                    }
                     
                 }
             }
@@ -426,27 +446,20 @@ exit 1
                 exit 1
             }
         }
-        "21" {
-            Write-Host "[21] Remove VM checkpoint." 
+        #[23] Remove VM checkpoint.
+        "23" {
+            Write-Host "[23] Remove VM checkpoint." 
             if ($VM) {
                 foreach ($Item in $VM) {
                     $VMName = $Item.name
-                    $VMSnapshot = Get-ExistingVMSnapshots -Computer $Computer -credentials $Credentials -VMName $VMName | Out-GridView -OutputMode Single -Title "Select VM Snapshot to remove." 
+                    $VMSnapshot = Get-ExistingVMCheckpoints -Computer $Computer -credentials $Credentials -VMName $VMName -Cached | Out-GridView -OutputMode Single -Title "Select VM Snapshot to remove." 
             
                     if ($VMSnapshot) {                 
-                        $LastState = $Item.state
-
-                        if ($LastState -ne "Off") {
-                            Stop-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
-                        }  
+                        
+                        Stop-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
 
                         $VMSnapshotName = $VMSnapshot.Name
-                        Remove-CustomVMCheckpoint -Computer $Computer -Credentials $Credentials -VMName $VMName -SnapshotName $VMSnapshotName                   
-
-                        if ($LastState -eq "Running") {
-                            Start-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
-                        }
-
+                        Remove-CustomVMCheckpoint -Computer $Computer -Credentials $Credentials -VMName $VMName -SnapshotName $VMSnapshotName 
                     } 
                 }             
             } 
@@ -455,27 +468,20 @@ exit 1
                 exit 1
             }
         }
-        "22" {
-            Write-Host "[22] Replace VM checkpoint." 
+        #[24] Replace VM checkpoint.
+        "24" {
+            Write-Host "[24] Replace VM checkpoint." 
             if ($VM) {
                 foreach ($Item in $VM) {
                     $VMName = $Item.name
-                    $VMSnapshot = Get-ExistingVMSnapshots -Computer $Computer -credentials $Credentials -VMName $VMName | Select-Object -last 1| Out-GridView -OutputMode Single -Title "Select VM Snapshot to replace." 
+                    $VMSnapshot = Get-ExistingVMCheckpoints -Computer $Computer -credentials $Credentials -VMName $VMName -Cached | Select-Object -last 1| Out-GridView -OutputMode Single -Title "Select VM Snapshot to replace." 
                     if ($VMSnapshot) {                 
-                        $LastState = $Item.state
-
-                        if ($LastState -ne "Off") {
-                            Stop-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
-                        }  
+                        Stop-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
 
                         $VMSnapshotName = $VMSnapshot.Name
                         Remove-CustomVMCheckpoint -Computer $Computer -Credentials $Credentials -VMName $VMName -SnapshotName $VMSnapshotName
                         Add-VMCheckPoint -Computer $Computer -Credentials $Credentials -VMName $VMName -NewCheckpointName $VMSnapshotName
 
-                        if ($LastState -eq "Running") {
-                            Start-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
-                        }
-
                     } 
                 }             
             }
@@ -484,8 +490,9 @@ exit 1
                 exit 1
             } 
         }
-        "23" {
-            Write-Host "[23] Connect VM console."
+        #[25] Connect VM console.
+        "25" {
+            Write-Host "[25] Connect VM console."
             
             if ($VM) {
                 foreach ($Item in $VM) {
@@ -497,8 +504,9 @@ exit 1
                 exit 1
             }
         }
-        "24" {
-            Write-Host "[24] Connect VM RDP."
+        #[26] Connect VM RDP.
+        "26" {
+            Write-Host "[26] Connect VM RDP."
             $Global:MaxVMNetworkWaitRetry = 100
             
             if ($VM) {
@@ -516,14 +524,17 @@ exit 1
                         }
                     }
                     $Global:VMIp = ($Networks | Where-Object { $_.SwitchName -eq "LAN" } | Select-Object -ExpandProperty IPAddresses) | Select-Object -first 1
-                    while ( ($Null -eq $HostName) -or ($Hostname -eq "") ) {
-                        start-sleep 2
-                        $HostName = ([System.Net.Dns]::GetHostByAddress($Global:VMIp).Hostname).split(".") | select-object -first 1 
+                    if (-not $Global:VMIp) {
+                        $Global:VMIp = ($Networks | Select-Object -ExpandProperty IPAddresses) | Select-Object -first 1 
                     }
-                    Add-GuestCredentialsToVault $HostName 
-                    Start-VMConsole  -Computer $Computer -Credentials $Credentials -IP $HostName 
+                    # while ( ($Null -eq $HostName) -or ($Hostname -eq "") ) {
+                    #     start-sleep 2
+                    #     $HostName = ([System.Net.Dns]::GetHostByAddress($Global:VMIp).Hostname).split(".") | select-object -first 1 
+                    # }
+                    Add-GuestCredentialsToVault -Ip $Global:VMIp -VMName $VMName
+                    Start-VMConsole  -Computer $Computer -Credentials $Credentials -IP $Global:VMIp
                     start-sleep -Seconds 10
-                    Remove-GuestCredentialsFromVault $HostName 
+                    Remove-GuestCredentialsFromVault -Ip $Global:VMIp -VMName $VMName
                 }
             }
             Else {
@@ -531,8 +542,9 @@ exit 1
                exit 1
             }
         }
-        "25" {
-            Write-Host "[25] Connect VM SSH."
+        #[27] Connect VM SSH.
+        "27" {
+            Write-Host "[27] Connect VM SSH."
             
             if ($VM) {
                 foreach ($Item in $VM) {
@@ -575,16 +587,15 @@ exit 1
                exit 1
             }
         }
-        "26" {
-            Write-Host "[26] Config guest host."
+        #[28] Config guest host.
+        "28" {
+            Write-Host "[28] Config guest host."
             $Res = Import-Module "AlexkWindowsGuestUtils" -PassThru -Force
             if ($Res) {
                 if ($VM) {
                     foreach ($Item in $VM) { 
                         $VMName = $Item.Name
-                        if ($Item.state -ne "Running"){
-                            Start-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName     
-                        }
+                        Start-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName     
 
                         
                         $Networks     = Get-VMNetworks  -Computer $Computer -Credentials $Credentials -VMName $VMName
@@ -600,29 +611,33 @@ exit 1
                             $RetryCounter ++
                         }
                         
-                        $GuestIP       = ($Networks | Where-Object { $_.SwitchName -eq "LAN" } | Select-Object -ExpandProperty IPAddresses) | Select-Object -first 1
-                        $GuestHostName = ([System.Net.Dns]::GetHostByAddress($GuestIP).Hostname).split(".") | Select-Object -first 1
+                        $NetworkAdapter = $Networks | Where-Object { $_.Name -like "LAN*" } | Select-Object -First 1
+                        $GuestIP        = $NetworkAdapter | Select-Object -ExpandProperty IPAddresses | Select-Object -first 1
+                  
+                        $GuestCredentials = Get-GuestCredentials -VMName $VMName -IP $GuestIP -Domen $Global:DomainName
+                        $GuestOSName      = Get-GuestWindowsOSVersion -VMName $VMName -GuestCredentials $GuestCredentials
                         
-                        $GuestCredentials = Get-GuestCredentials $GuestHostName
-                        $GuestOSName = Get-GuestWindowsOSVersion $VMName $GuestCredentials
-                        
-                        while (-not ($Answer -in @("1","2","3","4"))) {
+                        while (-not ($Answer -in @("1","2","3","4","5","6"))) {
                             $Answer = Read-Host "Select config type:
                             [1] Install updates
                             [2] Install remoting
                             [3] Configure
-                            [4] Rename        
+                            [4] Rename
+                            [5] Set network
+                            [6] Install AD         
                             "                    
                             switch ($Answer) {
                                 "1" { $ConfigType = "Install updates" }
                                 "2" { $ConfigType = "Install remoting" }
                                 "3" { $ConfigType = "Configure" }
                                 "4" { $ConfigType = "Rename" }
+                                "5" { $ConfigType = "Set network" }
+                                "6" { $ConfigType = "Install AD" }
                                 Default { Write-host "Wrong input. Select number from the list!" -ForegroundColor Red }
                             }
                         }
                         
-                        . ./ConfigWindowsHost.ps1 -InitGlobal $false -InitLocal $false -VM $Item  -GuestOSName $GuestOSName -GuestIP $GuestIP -GuestHostName $GuestHostName -GuestCredentials $GuestCredentials -ConfigType $ConfigType
+                        . ./ConfigWindowsHost.ps1 -InitGlobal $false -InitLocal $false -VM $Item  -GuestOSName $GuestOSName -GuestIP $GuestIP -GuestCredentials $GuestCredentials -ConfigType $ConfigType -NetworkAdapter $NetworkAdapter
                         
                         #$NewGuestName = Read-Host "Enter new guest name"
                     }
@@ -643,26 +658,42 @@ if ($res) {
 
     $RemoteUser     = Get-VarFromAESFile $Global:GlobalKey1 $Global:UserValuePath
     $RemotePass     = Get-VarFromAESFile $Global:GlobalKey1 $Global:PasswordValuePath
-    $Credentials    = New-Object System.Management.Automation.PSCredential -ArgumentList (Get-VarToString $RemoteUser), $RemotePass
+    $Credentials    = New-Object System.Management.Automation.PSCredential -ArgumentList (Get-VarToString $RemoteUser), $RemotePass    
     
-    $ScriptBlock = {
-        param ($Computer, $Credentials)
+    Write-Host "Getting VM list..." -ForegroundColor DarkCyan
+    $VMList = Get-ExistingVM -Computer $Computer -credentials $Credentials -Cached
 
-        $VMList = Get-ExistingVM -Computer $Computer -credentials $Credentials
-        return $VMList
+    $ScriptBlock = {
+        param (
+            $Computer,        
+            $Credentials, 
+            $Global:GlobalSettings, 
+            $Global:DATAFolder,
+            $ScriptLogFilePath
+        )
+
+        $res = $false
+
+        Get-ExistingVM -Computer $Computer -credentials $Credentials
+        Get-ExistingVMCheckpoints -Computer $Computer -credentials $Credentials
+        Get-ExistingVMSwitch -Computer $Computer -Credentials $Credentials
+        Get-ExistingVMNetworkAdapter -Computer $Computer -Credentials $Credentials
+        $res = $true
+        
+        return $Res
     }
         
-    $Job = Start-Job -ScriptBlock $ScriptBlock -ArgumentList $Computer, $Credentials
-
+    $Job = Start-Job -ScriptBlock $ScriptBlock -ArgumentList $Computer, $Credentials, $Global:GlobalSettings, $Global:DATAFolder,  $ScriptLogFilePath    
 
     
     Write-Host "Select action:
-       [1 ] Show VM.                [7 ] Rename VM.            [13] Create new VM.           [18] Show VM checkpoints.                      [23] Connect VM console.
-       [2 ] Start VM.               [8 ] Remove VM.            [14] Import exported VM.      [19] Restore VM checkpoint.                    [24] Connect VM RDP.
-       [3 ] Stop VM.                [9 ] Move VM storage.      [15] Export existing VM.      [20] Create new checkpoint for existing VM.    [25] Connect VM SSH.
-       [4 ] Restart VM.             [10] Add boot ISO.         [16] Set boot order.          [21] Remove VM checkpoint.                     [26] Config guest host.
-       [5 ] Shutdown and start VM.  [11] Remove boot ISO.      [17] Set VM RAM size.         [22] Replace VM checkpoint.
-       [6 ] Get VM settings.        [12] Optimize VM HDDs.          
+       [1 ] Show VM.                [7 ] Rename VM.            [13] Create new VM.           [20] Show VM checkpoints.                      [25] Connect VM console.
+       [2 ] Start VM.               [8 ] Remove VM.            [14] Import exported VM.      [21] Restore VM checkpoint.                    [26] Connect VM RDP.
+       [3 ] Stop VM.                [9 ] Move VM storage.      [15] Export existing VM.      [22] Create new checkpoint for existing VM.    [27] Connect VM SSH.
+       [4 ] Restart VM.             [10] Add boot ISO.         [16] Set boot order.          [23] Remove VM checkpoint.                     [28] Config guest host.
+       [5 ] Shutdown and start VM.  [11] Remove boot ISO.      [17] Set VM RAM size.         [24] Replace VM checkpoint.
+       [6 ] Get VM settings.        [12] Optimize VM HDDs.     [18] Add VM adapter.
+                                                               [19] Remove VM adapter.       
        
     " -ForegroundColor Cyan
 
@@ -673,14 +704,8 @@ if ($res) {
     if ($Actions.Contains(",")) {
         $Actions = $Actions.split(",")
     }
-    Write-host "Getting VM list..." -ForegroundColor DarkCyan
-
-    while ($Job.State -ne "Completed"){
-        start-sleep -Seconds 1
-    }
-
-    $VMList      = Receive-Job $Job    
-    $AllVMNames  = $VMList | Select-Object VMName, State,  VMId   
+    
+    $AllVMNames  = $VMList | Select-Object VMName, VMId   
     $NotChooseVM = @(1,13,14)
     
     $NeedVM = @(Compare-Object -ReferenceObject $NotChooseVM -DifferenceObject $Actions | Where-Object { $_.SideIndicator -eq "=>"}).count
@@ -689,12 +714,12 @@ if ($res) {
         $Global:VM = $VMList | Where-Object { $_.id -in $VMId }
         Write-host "Selected VM:
         $(($Global:VM | Select-Object VMName, State,  VMId | format-table -AutoSize | out-string).trim())" -ForegroundColor DarkMagenta
-    }
+    } 
     Else {
         $Global:VM = $Null
     }
 
-    if (@($Actions).count -gt 1){
+    if (@($Actions).count -gt 1){19
         foreach ($Action in $Actions) {
             $Action = $Action.trim()
             Start-Action $Action $VMList

@@ -31,7 +31,7 @@ Param (
 
 $Global:ScriptInvocation = $MyInvocation
 if ($env:AlexKFrameworkInitScript) { 
-    . "$env:AlexKFrameworkInitScript" -MyScriptRoot (Split-Path $PSCommandPath -Parent) -InitGlobal $InitGlobal -InitLocal $false
+    . "$env:AlexKFrameworkInitScript" -MyScriptRoot (Split-Path $PSCommandPath -Parent) -InitGlobal $InitGlobal -InitLocal $True
 }
 Else { 
     Write-Host "Environmental variable [AlexKFrameworkInitScript] does not exist!" -ForegroundColor Red
@@ -64,10 +64,10 @@ Function Set-Encrypt($Array) {
     }
 }
 
-if (Test-Path $XMLPath ) {
-    $xml = New-Object XML
-    $xml.load($XMLPath)
-    $Groups = $xml.KeePassFile.root.Group.Group
+if (Test-Path $ExportedXMLFilePath ) {
+    $XMLData = New-Object XML
+    $XMLData.load($ExportedXMLFilePath)
+    $Groups = $XMLData.KeePassFile.root.Group.Group
 
     [array] $Data = @()
     foreach ($Group in $Groups) {    
@@ -99,7 +99,7 @@ if (Test-Path $XMLPath ) {
         $PSO = [PSCustomObject]@{
             Username = $UserRecord.UserName
             Password = $UserRecord.Password
-            Host     = $UserRecord.URL
+            Group    = $Group.Name       
         }
 
         $Data += $PSO
@@ -128,7 +128,7 @@ if (Test-Path $XMLPath ) {
     }
 
     foreach ($Item in $Data) {
-        $DomainOrHostName = $Item.host
+        $DomainOrHostName = $Item.Group
         $Username         = $Item.Username
         $FileName         = "$($DomainOrHostName)_$($Username)_Login.dat"
 
@@ -147,7 +147,7 @@ if (Test-Path $XMLPath ) {
             AESKeyPath  = $AESKeyFilePath 
         }
         $Array += $PSO
-
+        
         Set-Encrypt $Array
     }
     # rundll32.exe keymgr.dll, KRShowKeyMgr    
