@@ -1,20 +1,31 @@
 # Rename this file to Settings.ps1
 ######################### value replacement #####################
     
-    [string]$Global:Computer               = ""         
-    [string]$Global:UserValuePath          = ""         
-    [string]$Global:PasswordValuePath      = ""         
-    [string]$Global:VMKeyPath              = ""         
-    [string]$Global:NewVMName              = ""         
-    [string]$Global:SShIdentityFilePath    = ""         
-    [string]$Global:XMLPath                = ""          # Exported repo and sub folders from Keepass
-######################### no replacement ########################
-    [string]$Global:InitialExportPath      = "G:\EXPORT\REPO\"
-    [string]$Global:ImportPath             = "D:\DATA\HYPER-V\IMPORTED"
-    [string]$Global:RDPShortcutsFolderPath = "G:\RDP\"
-    [string]$Global:IsoPath                = "\\srv1\g$\ISO\"   
-    [string]$Global:BGInfoInstallerURL     = "https://download.sysinternals.com/files/BGInfo.zip"
-    [int16] $Global:MaxVMNetworkWaitRetry    = 10
+    [string]$Global:Computer                      = ""         
+    [string]$Global:UserValuePath                 = ""         
+    [string]$Global:PasswordValuePath             = ""         
+    [string]$Global:VMKeyPath                     = ""         
+    [string]$Global:NewVMName                     = ""         
+    [string]$Global:SShIdentityFilePath           = ""         
+    [string]$Global:ExportedXMLFilePath           = ""          # Exported repo and sub folders from Keepass
+    [string]$Global:SafeModeAdministratorPassword = ""          # Exported repo and sub folders from Keepass
+
+######################### no replacement ########################    
+    [string]$Global:DefaultBrowserPath         = "C:\Program Files\Mozilla Firefox\firefox.exe"
+    [string]$Global:BrowserStartArgument       = "-private-window"
+    [string]$Global:InitialExportPath          = "G:\EXPORT\REPO\"
+    [string]$Global:ImportPath                 = "D:\DATA\HYPER-V\IMPORTED"
+    [string]$Global:RDPShortcutsFolderPath     = "G:\RDP\"
+    [string]$Global:IsoPath                    = "\\srv1\g$\ISO\"   
+    [string]$Global:BGInfoInstallerURL         = "https://download.sysinternals.com/files/BGInfo.zip"
+    [string]$Global:BGInfoInstallerSettingsURL = "https://raw.githubusercontent.com/Alex-0293/VMScripts/master/DATA/custom.bgi"
+    [string]$Global:TaskbandURL                = "https://raw.githubusercontent.com/Alex-0293/VMScripts/master/DATA/TASKBAND/taskband.zip"
+    [string]$Global:DomainName                 = "Test.local"
+    [Array] $Global:RouteableSwitches          = @("LAN", "EXT" )
+ 
+    [int16] $Global:MaxVMNetworkWaitRetry      = 10
+    
+
     
     $LAN = "LAN"
     $WAN = "EXT"

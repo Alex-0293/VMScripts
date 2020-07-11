@@ -43,7 +43,7 @@ if ($LastExitCode) { exit 1 }
 trap {
     if ($GlobalSettingsSuccessfullyLoaded) {
         Get-ErrorReporting $_
-        . "$GlobalSettings\$SCRIPTSFolder\Finish.ps1" 
+        . "$GlobalSettingsPath\$SCRIPTSFolder\Finish.ps1" 
     }
     Else {
         Write-Host "[$($MyInvocation.MyCommand.path)] There is error before logging initialized." -ForegroundColor Red
@@ -109,14 +109,14 @@ if (Test-Path $ExportedXMLFilePath ) {
 
     $AESKeyName     = split-path $Global:VMKeyPath -Leaf 
 
-    $SettingPath    = "$ProjectRoot\$VALUESFolder"
-    $AESKeyFilePath = "$ProjectRoot\$KEYSFolder\$AESKeyName"
+    $SettingPath = "$($Global:GlobalSettingsPath)\$VALUESFolder"
+    $AESKeyFilePath = "$($Global:GlobalSettingsPath)\$KEYSFolder\$AESKeyName"
     if (-not (Test-Path $AESKeyFilePath)) {
-        if ( -not (test-path "$ProjectRoot\$VALUESFolder") ) {
-            new-item -Path "$ProjectRoot\$VALUESFolder" -ItemType Directory
+        if ( -not (Test-Path "$($Global:GlobalSettingsPath)\$VALUESFolder") ) {
+            New-Item -Path "$($Global:GlobalSettingsPath)\$VALUESFolder" -ItemType Directory
         }    
-        if ( -not (Test-Path "$ProjectRoot\$KEYSFolder") ) {
-            New-Item -Path "$ProjectRoot\$KEYSFolder" -ItemType Directory
+        if ( -not (Test-Path "$($Global:GlobalSettingsPath)\$KEYSFolder") ) {
+            New-Item -Path "$($Global:GlobalSettingsPath)\$KEYSFolder" -ItemType Directory
         }
         
         $AESKey = New-Object Byte[] 32
@@ -154,4 +154,4 @@ if (Test-Path $ExportedXMLFilePath ) {
 }
 
 ################################# Script end here ###################################
-. "$GlobalSettings\$SCRIPTSFolder\Finish.ps1" 
+. "$GlobalSettingsPath\$SCRIPTSFolder\Finish.ps1" 

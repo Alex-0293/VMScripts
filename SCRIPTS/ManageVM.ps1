@@ -43,7 +43,7 @@ if ($LastExitCode) { exit 1 }
 trap {
     if ($GlobalSettingsSuccessfullyLoaded) {
         Get-ErrorReporting $_
-        . "$GlobalSettings\$SCRIPTSFolder\Finish.ps1" 
+        . "$GlobalSettingsPath\$SCRIPTSFolder\Finish.ps1" 
     }
     Else {
         Write-Host "[$($MyInvocation.MyCommand.path)] There is error before logging initialized." -ForegroundColor Red
@@ -263,9 +263,15 @@ exit 1
         "14" {
             Write-Host "[14] Import exported VM."
             $ExportPath = Convert-FSPath $Global:InitialExportPath $Computer
+            if (-not $NewVMName) {
+                while (-not $NewVMName) {
+                    $NewVMName = Read-Host "Enter new VM name"
+                    Write-Host "New VM name is: [$NewVMName]"   
+                } 
+            }
             $VMTemplatePath = Show-OpenDialog -Type "folder" -InitPath $ExportPath -Description "Choose VM template from repository."
             $VMTemplatePath = Convert-FSPath -CurrentPath $VMTemplatePath          
-
+            
             $Answer = Read-Host "Do you want to use ISO file? [Y/(N)]"
             if ($Answer.ToUpper() -eq "Y") {
                 $ISOFilePath = Show-OpenDialog -Type "file" -InitPath $IsoPath -Description "Choose ISO file." -FileFilter "ISO Files (*.iso)|*.iso"            
@@ -349,9 +355,16 @@ exit 1
             Write-Host "[18] Add VM adapter."            
             if ($VM) {
                 foreach ($Item in $VM) {
-                    $VMName = $Item.name
-                    $AdapterName = read-host "Enter new network adapter name"
+                    $VMName = $Item.name                   
                     $Switch = Get-ExistingVMSwitch  -Computer $Computer -Credentials $Credentials -Cached | select-object Name, SwitchType, NetAdapterInterfaceDescription | Out-GridView -OutputMode Single -Title "Select VM switch to add"
+                    $NetworkAdapters = Get-ExistingVMNetworkAdapter  -Computer $Computer -Credentials $Credentials -VMName $VMName
+                    $LastAdapterName = $NetworkAdapters | Where-Object { $_.SwitchName -eq $Switch } | Sort-Object Name | Select-Object -last 1
+                    if ($LastAdapterName) {
+                        $AdapterName = Invoke-TrailerIncrease -Value $LastAdapterName
+                    }
+                    Else {
+                        $AdapterName = "$($Switch.Name)1"
+                    }
                     if ($Switch) {
                         $SwitchName = $Switch.Name 
                         Add-VMNetAdapter  -Computer $Computer -Credentials $Credentials -VMName $VMName -SwitchName $SwitchName -AdapterName $AdapterName
@@ -369,11 +382,11 @@ exit 1
             if ($VM) {
                 foreach ($Item in $VM) {
                     $VMName = $Item.name           
-                    $Adapter = Get-ExistingVMNetworkAdapter -Computer $Computer -Credentials $Credentials -VMName $VMName -Cached | select-object VMName, Name, SwitchName, MacAddress, Status, IPAddresses | Out-GridView -OutputMode Single -Title "Select VM network adapter to remove"
-                    if ($Adapter) {
+                    $Adapters = Get-ExistingVMNetworkAdapter -Computer $Computer -Credentials $Credentials -VMName $VMName | select-object VMName, Name, SwitchName, MacAddress, Status, IPAddresses | Out-GridView -PassThru -Title "Select VM network adapter to remove"
+                    foreach ($Adapter in $Adapters) {                        
                         $AdapterName = $Adapter.name
                         Remove-VMNetAdapter  -Computer $Computer -Credentials $Credentials -VMName $VMName -AdapterName $AdapterName
-                    }
+                    }                    
                 }
             } 
             Else {
@@ -402,11 +415,11 @@ exit 1
                 foreach ($Item in $VM) {
                     $VMName = $Item.name
                     $VMSnapshot = Get-ExistingVMCheckpoints -Computer $Computer -credentials $Credentials -VMName $VMName -Cached | Out-GridView -OutputMode Single -Title "Select VM Snapshot to restore." 
-                    if ($VMSnapshot) {                 
-
-                        Stop-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
-                        $VMSnapshotName = $VMSnapshot.Name
-                        Restore-CustomVMCheckpoint -Computer $Computer -Credentials $Credentials -VMName $VMName -SnapshotName $VMSnapshotName
+                    if ($VMSnapshot) { 
+                        $VMSnapshotName = $VMSnapshot.name                
+                        $VMSnapshotId = $VMSnapshot.Id  
+                        Stop-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName    
+                        Restore-CustomVMCheckpoint -Computer $Computer -Credentials $Credentials -VMName $VMName -SnapshotId $VMSnapshotId -SnapshotName $VMSnapshotName
                     }  
                 }            
             } 
@@ -434,8 +447,7 @@ exit 1
                         "4" { $CheckpointName = "Configured" }
                         Default { [string] $CheckpointName = $Answer }
                     }
-                    $ThisVM = Get-ExistingVM  -Computer $Computer -Credentials $Credentials -VMName $VMName -Cached
-                    
+                                        
                     Stop-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
                     Add-VMCheckPoint -Computer $Computer -Credentials $Credentials -VMName $VMName -NewCheckpointName $CheckpointName
                     
@@ -512,29 +524,31 @@ exit 1
             if ($VM) {
                 foreach ($Item in $VM) {
                     $VMName = $Item.Name
-                    $Networks = Get-VMNetworks  -Computer $Computer -Credentials $Credentials -VMName $VMName
-                    $RetryCounter = 1
-                    while (@($Networks.IPAddresses).count -lt 2) {        
-                        Write-Host "Waiting for network... ($($Networks.IPAddresses))"
-                        Start-Sleep -seconds 1
-                        $Networks = Get-VMNetworks  -Computer $Computer -Credentials $Credentials -VMName $VMName
-                        if ($RetryCounter -gt $Global:MaxVMNetworkWaitRetry) {
-                            Add-ToLog -Message "VM [$VMName] does not have ip addresses after [$Global:MaxVMNetworkWaitRetry] retries!" -logFilePath $ScriptLogFilePath -Display -Status "Error"
-                            Exit 1
+                    
+                    Start-CustomVM -Computer $Computer -Credentials $Credentials -VMName $VMName
+                  
+                    $NetworkAdapters   = Get-ExistingVMNetworkAdapter  -Computer $Computer -Credentials $Credentials -VMName $VMName -Cached                    
+                    $Switch            = ($NetworkAdapters | Where-Object { $_.SwitchName -in $RouteableSwitches}).SwitchName | Select-Object -First 1
+                    $GuestIPs          = Get-VMIp  -Computer $Computer -Credentials $Credentials -VMName $VMName -SwitchName $Switch
+                    $GuestIP           = $GuestIPs | Select-Object -first 1
+
+                    if ($GuestIP) {
+                        Add-GuestCredentialsToVault -IP  $GuestIP  -VMName $VMName -Domen $Global:DomainName 
+                        Start-VMConsole  -Computer $Computer -Credentials $Credentials -IP  $GuestIP 
+                        $ScriptBlock = {
+                            param (
+                                $GuestIP,
+                                $DomainName
+                            )
+                            start-sleep -Seconds 60
+                            Remove-GuestCredentialsFromVault -IP  $GuestIP  -VMName $VMName -Domen $DomainName
                         }
+                        Start-Job -Name "RemoveCredentials" -ScriptBlock $ScriptBlock -ArgumentList $GuestIP, $Global:DomainName
+                         
                     }
-                    $Global:VMIp = ($Networks | Where-Object { $_.SwitchName -eq "LAN" } | Select-Object -ExpandProperty IPAddresses) | Select-Object -first 1
-                    if (-not $Global:VMIp) {
-                        $Global:VMIp = ($Networks | Select-Object -ExpandProperty IPAddresses) | Select-Object -first 1 
+                    Else {
+                        Add-ToLog -Message "No IPs found on VM [$VMName] switch [$Switch]" -logFilePath $ScriptLogFilePath -Display -Status "Warning"
                     }
-                    # while ( ($Null -eq $HostName) -or ($Hostname -eq "") ) {
-                    #     start-sleep 2
-                    #     $HostName = ([System.Net.Dns]::GetHostByAddress($Global:VMIp).Hostname).split(".") | select-object -first 1 
-                    # }
-                    Add-GuestCredentialsToVault -Ip $Global:VMIp -VMName $VMName
-                    Start-VMConsole  -Computer $Computer -Credentials $Credentials -IP $Global:VMIp
-                    start-sleep -Seconds 10
-                    Remove-GuestCredentialsFromVault -Ip $Global:VMIp -VMName $VMName
                 }
             }
             Else {
@@ -587,9 +601,110 @@ exit 1
                exit 1
             }
         }
-        #[28] Config guest host.
+        #[28] Connect by HTTPS.
         "28" {
-            Write-Host "[28] Config guest host."
+            Write-Host "[28] Connect by HTTPS."
+            
+            if ($VM) {
+                foreach ($Item in $VM) {   
+                    $VMName            = $Item.Name
+                    $NetworkAdapters   = Get-ExistingVMNetworkAdapter  -Computer $Computer -Credentials $Credentials -VMName $VMName -Cached
+                    $RouteableSwitches = @("LAN", "EXT" )
+                    $Switch            = ($NetworkAdapters | Where-Object { $_.SwitchName -in $RouteableSwitches}).SwitchName | select -First 1
+                    $GuestIPs          = Get-VMIp  -Computer $Computer -Credentials $Credentials -VMName $VMName -SwitchName $Switch
+                    $GuestIP           = $GuestIPs | Select-Object -first 1
+                    $HTTPSPath         = "https://$GuestIP"
+
+                    & $Global:DefaultBrowserPath $Global:BrowserStartArgument $HTTPSPath
+                }  
+            }
+            Else {
+                Add-ToLog -Message "VM not chosen! Aborted." -logFilePath $ScriptLogFilePath -Display -Status "Warning"
+                exit 1
+            }
+        }
+        #[29] Connect by HTTP.
+        "29" {
+            Write-Host "[29] Connect by HTTP."
+            
+            if ($VM) {
+                foreach ($Item in $VM) {   
+                    $VMName = $Item.Name
+                    $Networks = Get-VMNetworks  -Computer $Computer -Credentials $Credentials -VMName $VMName
+                    $RetryCounter = 1
+                    while (@($Networks.IPAddresses).count -lt 2) {        
+                        Write-Host "Waiting for network... ($($Networks.IPAddresses))"
+                        Start-Sleep -seconds 1
+                        $Networks = Get-VMNetworks  -Computer $Computer -Credentials $Credentials -VMName $VMName
+                        if ($RetryCounter -gt $Global:MaxVMNetworkWaitRetry) {
+                            Add-ToLog -Message "VM [$VMName] does not have ip addresses after [$Global:MaxVMNetworkWaitRetry] retries!" -logFilePath $ScriptLogFilePath -Display -Status "Error"
+                            Exit 1
+                        }
+                        $RetryCounter ++
+                    }
+                    
+                    $NetworkAdapter = $Networks | Where-Object { $_.Name -like "LAN*" } | Select-Object -First 1
+                    $GuestIP = $NetworkAdapter | Select-Object -ExpandProperty IPAddresses | Select-Object -first 1                 
+                    $HTTPSPath = "http://$GuestIP"
+
+                    & $Global:DefaultBrowserPath $Global:BrowserStartArgument $HTTPSPath
+                }  
+            }
+            Else {
+                Add-ToLog -Message "VM not chosen! Aborted." -logFilePath $ScriptLogFilePath -Display -Status "Warning"
+                exit 1
+            }
+        }
+        #[30] Ping VM guest.
+        "30" {
+            Write-Host "[30] Ping VM guest."
+            
+            if ($VM) {
+                foreach ($Item in $VM) {   
+                    $VMName = $Item.Name
+                    $Networks = Get-VMNetworks  -Computer $Computer -Credentials $Credentials -VMName $VMName
+                    $RetryCounter = 1
+                    while (@($Networks.IPAddresses).count -lt 2) {        
+                        Write-Host "Waiting for network... ($($Networks.IPAddresses))"
+                        Start-Sleep -seconds 1
+                        $Networks = Get-VMNetworks  -Computer $Computer -Credentials $Credentials -VMName $VMName
+                        if ($RetryCounter -gt $Global:MaxVMNetworkWaitRetry) {
+                            Add-ToLog -Message "VM [$VMName] does not have ip addresses after [$Global:MaxVMNetworkWaitRetry] retries!" -logFilePath $ScriptLogFilePath -Display -Status "Error"
+                            Exit 1
+                        }
+                        $RetryCounter ++
+                    }
+
+                    $Arguments = ""
+                    $IPs = @()
+                    foreach ($NetworkAdapter in $Networks) {
+                        $GuestIPs = $NetworkAdapter | Select-Object -ExpandProperty IPAddresses
+                       
+                        foreach ($Ip in $GuestIPs) {
+                            $IPs += $Ip
+                            if ([array]::IndexOf($GuestIPs, $Ip ) -eq 0) {
+                                $Arguments += "-p PowerShell ping.exe $ip -t; " #"--title $($NetworkAdapter.name) -p PowerShell  ping.exe $($IPs[0]) -t; "
+                            }
+                            Else {
+                                $Arguments +=  "split-pane -H ping.exe $ip -t; " #"new-tab -p PowerShell ping.exe $ip -t; "
+                            }
+                        }
+                    } 
+                   
+                    if ($IPs) {                        
+                        $Arguments += "focus-tab -t 0" #$Arguments.Substring(0, ($Arguments.Length - 2))
+                        Start-Job -ScriptBlock { Start-Process wt.exe $Using:Arguments }
+                    }
+                }  
+            }
+            Else {
+                Add-ToLog -Message "VM not chosen! Aborted." -logFilePath $ScriptLogFilePath -Display -Status "Warning"
+                exit 1
+            }
+        }
+        #[31] Config guest host.
+        "31" {
+            Write-Host "[31] Config guest host"
             $Res = Import-Module "AlexkWindowsGuestUtils" -PassThru -Force
             if ($Res) {
                 if ($VM) {
@@ -656,8 +771,8 @@ exit 1
 $res = Import-Module AlexkVMUtils -PassThru -Force
 if ($res) {
 
-    $RemoteUser     = Get-VarFromAESFile $Global:GlobalKey1 $Global:UserValuePath
-    $RemotePass     = Get-VarFromAESFile $Global:GlobalKey1 $Global:PasswordValuePath
+    $RemoteUser     = Get-VarFromAESFile -AESKeyFilePath $Global:GlobalKey1 -VarFilePath $Global:UserValuePath
+    $RemotePass     = Get-VarFromAESFile -AESKeyFilePath $Global:GlobalKey1 -VarFilePath $Global:PasswordValuePath
     $Credentials    = New-Object System.Management.Automation.PSCredential -ArgumentList (Get-VarToString $RemoteUser), $RemotePass    
     
     Write-Host "Getting VM list..." -ForegroundColor DarkCyan
@@ -667,7 +782,7 @@ if ($res) {
         param (
             $Computer,        
             $Credentials, 
-            $Global:GlobalSettings, 
+            $Global:GlobalSettingsPath, 
             $Global:DATAFolder,
             $ScriptLogFilePath
         )
@@ -683,17 +798,20 @@ if ($res) {
         return $Res
     }
         
-    $Job = Start-Job -ScriptBlock $ScriptBlock -ArgumentList $Computer, $Credentials, $Global:GlobalSettings, $Global:DATAFolder,  $ScriptLogFilePath    
+    $Job = Start-Job -ScriptBlock $ScriptBlock -ArgumentList $Computer, $Credentials, $Global:GlobalSettingsPath, $Global:DATAFolder,  $ScriptLogFilePath    
 
     
     Write-Host "Select action:
+       
+       [0] Exit
+
        [1 ] Show VM.                [7 ] Rename VM.            [13] Create new VM.           [20] Show VM checkpoints.                      [25] Connect VM console.
        [2 ] Start VM.               [8 ] Remove VM.            [14] Import exported VM.      [21] Restore VM checkpoint.                    [26] Connect VM RDP.
        [3 ] Stop VM.                [9 ] Move VM storage.      [15] Export existing VM.      [22] Create new checkpoint for existing VM.    [27] Connect VM SSH.
-       [4 ] Restart VM.             [10] Add boot ISO.         [16] Set boot order.          [23] Remove VM checkpoint.                     [28] Config guest host.
-       [5 ] Shutdown and start VM.  [11] Remove boot ISO.      [17] Set VM RAM size.         [24] Replace VM checkpoint.
-       [6 ] Get VM settings.        [12] Optimize VM HDDs.     [18] Add VM adapter.
-                                                               [19] Remove VM adapter.       
+       [4 ] Restart VM.             [10] Add boot ISO.         [16] Set boot order.          [23] Remove VM checkpoint.                     [28] Connect by HTTPS.
+       [5 ] Shutdown and start VM.  [11] Remove boot ISO.      [17] Set VM RAM size.         [24] Replace VM checkpoint.                    [29] Connect by HTTP.
+       [6 ] Get VM settings.        [12] Optimize VM HDDs.     [18] Add VM adapter.                                                         [30] Ping VM guest.
+                                                               [19] Remove VM adapter.                                                      [31] Config guest host.
        
     " -ForegroundColor Cyan
 
@@ -705,7 +823,7 @@ if ($res) {
         $Actions = $Actions.split(",")
     }
     
-    $AllVMNames  = $VMList | Select-Object VMName, VMId   
+    $AllVMNames  = $VMList | Select-Object VMName, State, VMId   
     $NotChooseVM = @(1,13,14)
     
     $NeedVM = @(Compare-Object -ReferenceObject $NotChooseVM -DifferenceObject $Actions | Where-Object { $_.SideIndicator -eq "=>"}).count
@@ -735,4 +853,4 @@ else {
 }
 
 ################################# Script end here ###################################
-. "$GlobalSettings\$SCRIPTSFolder\Finish.ps1" 
+. "$GlobalSettingsPath\$SCRIPTSFolder\Finish.ps1" 
